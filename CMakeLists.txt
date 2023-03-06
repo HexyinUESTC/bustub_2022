@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 17)              # Compile as C++17.
 set(CMAKE_CXX_STANDARD_REQUIRED ON)     # Require C++17 support.
 
 project(BusTub
-        VERSION 2022.8
+        VERSION 2023.1
         DESCRIPTION "The BusTub Relational Database Management System (Educational) @ https://github.com/cmu-db/bustub"
         LANGUAGES C CXX
         )
@@ -32,19 +32,19 @@ endif ()
 
 # Expected directory structure.
 set(BUSTUB_BUILD_SUPPORT_DIR "${CMAKE_SOURCE_DIR}/build_support")
-set(BUSTUB_CLANG_SEARCH_PATH "/usr/local/bin" "/usr/bin" "/usr/local/opt/llvm/bin" "/usr/local/opt/llvm@12/bin"
-        "/usr/local/Cellar/llvm/12.0.1/bin" "/opt/homebrew/opt/llvm@12/bin/")
+set(BUSTUB_CLANG_SEARCH_PATH "/usr/local/bin" "/usr/bin" "/usr/local/opt/llvm/bin" "/usr/local/opt/llvm@14/bin"
+        "/opt/homebrew/opt/llvm@14/bin/")
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    if (CMAKE_CXX_COMPILER_VERSION MATCHES "^12.")
+    if (CMAKE_CXX_COMPILER_VERSION MATCHES "^14.")
         message(STATUS "You're using ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
     else ()
-        message(WARNING "!! We recommend that you use clang-12 for developing BusTub. You're using ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}, a different version.")
+        message(WARNING "!! We recommend that you use clang-14 for developing BusTub. You're using ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}, a different version.")
     endif ()
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
     message(STATUS "You're using ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
 else ()
-    message(WARNING "!! We recommend that you use clang-12 for developing BusTub. You're using ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}, which is not clang.")
+    message(WARNING "!! We recommend that you use clang-14 for developing BusTub. You're using ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}, which is not clang.")
 endif ()
 
 ######################################################################################################################
@@ -58,7 +58,7 @@ enable_testing()
 
 # attempt to find the binary if user did not specify
 find_program(CLANG_FORMAT_BIN
-        NAMES clang-format clang-format-12
+        NAMES clang-format clang-format-14
         HINTS ${BUSTUB_CLANG_SEARCH_PATH})
 
 if ("${CLANG_FORMAT_BIN}" STREQUAL "CLANG_FORMAT_BIN-NOTFOUND")
@@ -69,7 +69,7 @@ endif ()
 
 # attempt to find the binary if user did not specify
 find_program(CLANG_TIDY_BIN
-        NAMES clang-tidy clang-tidy-12
+        NAMES clang-tidy clang-tidy-14
         HINTS ${BUSTUB_CLANG_SEARCH_PATH})
 
 if ("${CLANG_TIDY_BIN}" STREQUAL "CLANG_TIDY_BIN-NOTFOUND")
@@ -82,7 +82,7 @@ endif ()
 
 
 find_program(CLANG_APPLY_REPLACEMENTS_BIN
-        NAMES clang-apply-replacements clang-apply-replacements-12
+        NAMES clang-apply-replacements clang-apply-replacements-14
         HINTS ${BUSTUB_CLANG_SEARCH_PATH})
 
 if ("${CLANG_APPLY_REPLACEMENTS_BIN}" STREQUAL "CLANG_APPLY_REPLACEMENTS_BIN-NOTFOUND")
@@ -108,7 +108,7 @@ endif ()
 # COMPILER SETUP
 ######################################################################################################################
 
-if (NOT BUSTUB_SANITIZER)
+if (NOT DEFINED BUSTUB_SANITIZER)
     set(BUSTUB_SANITIZER address)
 endif ()
 
@@ -139,6 +139,7 @@ set(BUSTUB_THIRD_PARTY_INCLUDE_DIR
         ${PROJECT_SOURCE_DIR}/third_party/fmt/include
         ${PROJECT_SOURCE_DIR}/third_party/libpg_query/include
         ${PROJECT_SOURCE_DIR}/third_party/argparse/include
+        ${PROJECT_SOURCE_DIR}/third_party/cpp_random_distributions
         )
 
 include_directories(${BUSTUB_SRC_INCLUDE_DIR} ${BUSTUB_TEST_INCLUDE_DIR} ${BUSTUB_THIRD_PARTY_INCLUDE_DIR})
@@ -247,20 +248,35 @@ add_custom_target(fix-clang-tidy-diff
 # check clang-tidy on the whole projects is slow, so we
 # hardcode some files to check here for each project.
 ###########################################################
+
+set(P0_FILES
+        "src/include/primer/trie_answer.h"
+        "src/include/primer/trie_store.h"
+        "src/include/primer/trie.h"
+        "src/primer/trie_store.cpp"
+        "src/primer/trie.cpp"
+        "src/planner/plan_func_call.cpp"
+        "src/include/execution/expressions/string_expression.h"
+        )
 add_custom_target(check-clang-tidy-p0
         ${BUSTUB_BUILD_SUPPORT_DIR}/run_clang_tidy.py                     # run LLVM's clang-tidy script
         -clang-tidy-binary ${CLANG_TIDY_BIN}                              # using our clang-tidy binary
         -p ${CMAKE_BINARY_DIR}                                            # using cmake's generated compile commands
-        "src/primer/p0_trie.cpp"
+        ${P0_FILES}
+        )
+add_custom_target(submit-p0
+        zip project0-submission.zip
+        ${P0_FILES}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         )
 
 set(P1_FILES
-        "src/include/container/hash/extendible_hash_table.h"
-        "src/container/hash/extendible_hash_table.cpp"
+        "src/include/storage/page/page_guard.h"
+        "src/storage/page/page_guard.cpp"
         "src/include/buffer/lru_k_replacer.h"
         "src/buffer/lru_k_replacer.cpp"
-        "src/include/buffer/buffer_pool_manager_instance.h"
-        "src/buffer/buffer_pool_manager_instance.cpp"
+        "src/include/buffer/buffer_pool_manager.h"
+        "src/buffer/buffer_pool_manager.cpp"
         )
 add_custom_target(check-clang-tidy-p1
         ${BUSTUB_BUILD_SUPPORT_DIR}/run_clang_tidy.py                     # run LLVM's clang-tidy script

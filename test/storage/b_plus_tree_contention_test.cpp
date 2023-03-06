@@ -9,7 +9,7 @@
 #include <iostream>
 #include <thread>  // NOLINT
 
-#include "buffer/buffer_pool_manager_instance.h"
+#include "buffer/buffer_pool_manager.h"
 #include "gtest/gtest.h"
 #include "storage/disk/disk_manager_memory.h"
 #include "storage/index/b_plus_tree.h"
@@ -25,13 +25,15 @@ bool BPlusTreeLockBenchmarkCall(size_t num_threads, int leaf_node_size, bool wit
   auto key_schema = ParseCreateStatement("a bigint");
   GenericComparator<8> comparator(key_schema.get());
   auto *disk_manager = new DiskManagerMemory(256 << 10);  // 1GB
-  BufferPoolManager *bpm = new BufferPoolManagerInstance(64, disk_manager);
-  // create b+ tree
-  BPlusTree<GenericKey<8>, RID, GenericComparator<8>> tree("foo_pk", bpm, comparator, leaf_node_size, 10);
+  auto *bpm = new BufferPoolManager(64, disk_manager);
+
   // create and fetch header_page
   page_id_t page_id;
   auto *header_page = bpm->NewPage(&page_id);
   (void)header_page;
+
+  // create b+ tree
+  BPlusTree<GenericKey<8>, RID, GenericComparator<8>> tree("foo_pk", page_id, bpm, comparator, leaf_node_size, 10);
 
   std::vector<std::thread> threads;
 
@@ -74,7 +76,13 @@ bool BPlusTreeLockBenchmarkCall(size_t num_threads, int leaf_node_size, bool wit
   return success;
 }
 
-TEST(BPlusTreeTest, DISABLED_BPlusTreeContentionBenchmark) {  // NOLINT
+TEST(BPlusTreeContentionTest, BPlusTreeContentionBenchmark) {  // NOLINT
+  std::cout << "This test will see how your B+ tree performance differs with and without contention." << std::endl;
+  std::cout << "If your submission timeout, segfault, or didn't implement lock crabbing, we will manually deduct all "
+               "concurrent test points (maximum 25)."
+            << std::endl;
+  std::cout << "left_node_size = 2" << std::endl;
+
   std::vector<size_t> time_ms_with_mutex;
   std::vector<size_t> time_ms_wo_mutex;
   for (size_t iter = 0; iter < 20; iter++) {
@@ -89,7 +97,7 @@ TEST(BPlusTreeTest, DISABLED_BPlusTreeContentionBenchmark) {  // NOLINT
       time_ms_wo_mutex.push_back(dur.count());
     }
   }
-  std::cout << "This test will see how your B+ tree performance differs with and without contention." << std::endl;
+
   std::cout << "<<< BEGIN" << std::endl;
   std::cout << "Normal Access Time: ";
   double ratio_1 = 0;
@@ -114,7 +122,13 @@ TEST(BPlusTreeTest, DISABLED_BPlusTreeContentionBenchmark) {  // NOLINT
             << std::endl;
 }
 
-TEST(BPlusTreeTest, DISABLED_BPlusTreeContentionBenchmark2) {  // NOLINT
+TEST(BPlusTreeContentionTest, BPlusTreeContentionBenchmark2) {  // NOLINT
+  std::cout << "This test will see how your B+ tree performance differs with and without contention." << std::endl;
+  std::cout << "If your submission timeout, segfault, or didn't implement lock crabbing, we will manually deduct all "
+               "concurrent test points (maximum 25)."
+            << std::endl;
+  std::cout << "left_node_size = 10" << std::endl;
+
   std::vector<size_t> time_ms_with_mutex;
   std::vector<size_t> time_ms_wo_mutex;
   for (size_t iter = 0; iter < 20; iter++) {
@@ -129,7 +143,7 @@ TEST(BPlusTreeTest, DISABLED_BPlusTreeContentionBenchmark2) {  // NOLINT
       time_ms_wo_mutex.push_back(dur.count());
     }
   }
-  std::cout << "This test will see how your B+ tree performance differs with and without contention." << std::endl;
+
   std::cout << "<<< BEGIN2" << std::endl;
   std::cout << "Normal Access Time: ";
   double ratio_1 = 0;

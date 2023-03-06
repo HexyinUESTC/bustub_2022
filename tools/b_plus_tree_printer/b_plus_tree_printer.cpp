@@ -13,14 +13,13 @@
 #include <cstdio>
 #include <iostream>
 
-#include "buffer/buffer_pool_manager_instance.h"
+#include "buffer/buffer_pool_manager.h"
 #include "common/logger.h"
 #include "storage/index/b_plus_tree.h"
 #include "test_util.h"  // NOLINT
 
 using bustub::BPlusTree;
 using bustub::BufferPoolManager;
-using bustub::BufferPoolManagerInstance;
 using bustub::DiskManager;
 using bustub::Exception;
 using bustub::GenericComparator;
@@ -73,12 +72,13 @@ auto main(int argc, char **argv) -> int {
   GenericComparator<8> comparator(key_schema.get());
 
   auto *disk_manager = new DiskManager("test.db");
-  BufferPoolManager *bpm = new BufferPoolManagerInstance(100, disk_manager);
+  auto *bpm = new BufferPoolManager(100, disk_manager);
   // create and fetch header_page
   page_id_t page_id;
   auto header_page = bpm->NewPage(&page_id);
   // create b+ tree
-  BPlusTree<GenericKey<8>, RID, GenericComparator<8>> tree("foo_pk", bpm, comparator, leaf_max_size, internal_max_size);
+  BPlusTree<GenericKey<8>, RID, GenericComparator<8>> tree("foo_pk", page_id, bpm, comparator, leaf_max_size,
+                                                           internal_max_size);
   // create transaction
   auto *transaction = new Transaction(0);
   while (!quit) {
@@ -111,6 +111,7 @@ auto main(int argc, char **argv) -> int {
         quit = true;
         break;
       case 'p':
+        std::cout << tree.DrawBPlusTree() << std::endl;
         tree.Print(bpm);
         break;
       case 'g':

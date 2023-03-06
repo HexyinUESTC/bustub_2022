@@ -11,7 +11,7 @@
 #include "binder/statement/index_statement.h"
 #include "binder/statement/select_statement.h"
 #include "binder/statement/set_show_statement.h"
-#include "buffer/buffer_pool_manager_instance.h"
+#include "buffer/buffer_pool_manager.h"
 #include "catalog/schema.h"
 #include "catalog/table_generator.h"
 #include "common/bustub_instance.h"
@@ -53,7 +53,7 @@ BustubInstance::BustubInstance(const std::string &db_file_name) {
   // We need more frames for GenerateTestTable to work. Therefore, we use 128 instead of the default
   // buffer pool size specified in `config.h`.
   try {
-    buffer_pool_manager_ = new BufferPoolManagerInstance(128, disk_manager_, LRUK_REPLACER_K, log_manager_);
+    buffer_pool_manager_ = new BufferPoolManager(128, disk_manager_, LRUK_REPLACER_K, log_manager_);
   } catch (NotImplementedException &e) {
     std::cerr << "BufferPoolManager is not implemented, only mock tables are supported." << std::endl;
     buffer_pool_manager_ = nullptr;
@@ -85,7 +85,7 @@ BustubInstance::BustubInstance() {
   // We need more frames for GenerateTestTable to work. Therefore, we use 128 instead of the default
   // buffer pool size specified in `config.h`.
   try {
-    buffer_pool_manager_ = new BufferPoolManagerInstance(128, disk_manager_, LRUK_REPLACER_K, log_manager_);
+    buffer_pool_manager_ = new BufferPoolManager(128, disk_manager_, LRUK_REPLACER_K, log_manager_);
   } catch (NotImplementedException &e) {
     std::cerr << "BufferPoolManager is not implemented, only mock tables are supported." << std::endl;
     buffer_pool_manager_ = nullptr;
@@ -174,10 +174,16 @@ see the execution plan of your query.
 
 auto BustubInstance::ExecuteSql(const std::string &sql, ResultWriter &writer) -> bool {
   auto txn = txn_manager_->Begin();
-  auto result = ExecuteSqlTxn(sql, writer, txn);
-  txn_manager_->Commit(txn);
-  delete txn;
-  return result;
+  try {
+    auto result = ExecuteSqlTxn(sql, writer, txn);
+    txn_manager_->Commit(txn);
+    delete txn;
+    return result;
+  } catch (bustub::Exception &ex) {
+    txn_manager_->Abort(txn);
+    delete txn;
+    throw ex;
+  }
 }
 
 auto BustubInstance::ExecuteSqlTxn(const std::string &sql, ResultWriter &writer, Transaction *txn) -> bool {
